@@ -140,8 +140,9 @@ class _TodoListState extends State<TodoList> {
     ];
     return Scaffold(
       appBar: AppBar(
-          title: const Text('Todo List App'),
-          backgroundColor: Colors.purple[600]),
+        title: const Text('Todo List App'),
+        backgroundColor: Colors.purple[600],
+      ),
       bottomNavigationBar: BottomNavigationBar(
         backgroundColor: Colors.purple[600],
         selectedItemColor: Colors.white,
