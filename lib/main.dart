@@ -5,6 +5,9 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
+import 'package:settings_ui/settings_ui.dart';
+import 'package:getwidget/getwidget.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class Todo {
   Todo({required this.name, required this.checked});
@@ -35,33 +38,27 @@ class TodoItem extends StatelessWidget {
   final Function onTodoChanged;
 
   TextStyle? _getTextStyle(bool checked) {
-    if (!checked) return null;
+    if (!checked) {
+      return const TextStyle(
+        color: Colors.black,
+        fontSize: 20,
+      );
+    }
 
     return const TextStyle(
-      color: Colors.black54,
+      color: Colors.black,
       decoration: TextDecoration.lineThrough,
+      fontSize: 20,
     );
   }
 
-  // @override
-  // Widget build(BuildContext context) {
-  //   return ListTile(
-  //     onTap: () {
-  //       onTodoChanged(todo);
-  //     },
-  //     leading: CircleAvatar(
-  //       child: Text(todo.name[0]),
-  //     ),
-  //     title: Text(todo.name, style: _getTextStyle(todo.checked)),
-  //   );
-  // }
   @override
   Widget build(BuildContext context) {
     return Slidable(
       key: const ValueKey(0),
       endActionPane: ActionPane(
         motion: const ScrollMotion(),
-        dismissible: DismissiblePane(onDismissed: () {}),
+        dismissible: DismissiblePane(onDismissed: () => onTodoDeleted(todo)),
         children: <Widget>[
           SlidableAction(
             onPressed: (BuildContext context) {
@@ -78,8 +75,14 @@ class TodoItem extends StatelessWidget {
         onTap: () {
           onTodoChanged(todo);
         },
-        leading: CircleAvatar(
-          child: Text(todo.name[0]),
+        leading: GFCheckbox(
+          size: 25,
+          type: GFCheckboxType.basic,
+          activeBgColor: GFColors.DANGER,
+          onChanged: (value) {
+            onTodoChanged(todo);
+          },
+          value: todo.checked,
         ),
         title: Text(todo.name, style: _getTextStyle(todo.checked)),
       ),
@@ -95,33 +98,81 @@ class TodoList extends StatefulWidget {
   _TodoListState createState() => _TodoListState();
 }
 
-class _TodoListState extends State<TodoList> {
-  _TodoListState() {
-    _init();
-  }
-
-  int _selectedIndex = 0;
+class _TodoListState extends State<TodoList> with TickerProviderStateMixin {
   final TextEditingController _textFieldController = TextEditingController();
   List<Todo> _todos = <Todo>[];
   static const TextStyle optionStyle =
       TextStyle(fontSize: 30, fontWeight: FontWeight.bold);
 
   late SharedPreferences sharedPreferences;
+  late TabController tabController;
+  int _currentIndex = 0;
+
+  @override
+  void initState() {
+    _init();
+    super.initState();
+    tabController = TabController(length: 3, vsync: this);
+    tabController.addListener(_handleTabSelection);
+  }
+
+  @override
+  void dispose() {
+    tabController.dispose();
+    super.dispose();
+  }
+
+  generateList() {
+    return Column(
+      children: <Widget>[
+        Text("Created task: ${_todos.length}"),
+        Expanded(
+          child: ListView.separated(
+            itemCount: _todos.length,
+            separatorBuilder: (_, __) => const Divider(),
+            // padding: const EdgeInsets.symmetric(vertical: 5.0),
+            itemBuilder: (context, index) {
+              final todo = _todos[index];
+              return TodoItem(
+                todo: todo,
+                onTodoChanged: _handleTodoChange,
+                onTodoDeleted: _deleteTodoItem,
+              );
+            },
+          ),
+        )
+      ],
+    );
+  }
+
+  settingsMenu() {
+    return SettingsList(
+      sections: [
+        SettingsSection(
+          title: const Text('Common'),
+          tiles: <SettingsTile>[
+            SettingsTile.navigation(
+              leading: const Icon(Icons.language),
+              title: const Text('Language'),
+              value: const Text('English'),
+            ),
+            SettingsTile.switchTile(
+              onToggle: (value) {},
+              initialValue: true,
+              leading: const Icon(Icons.format_paint),
+              title: const Text('Enable custom theme'),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     List<Widget> pages = <Widget>[
       _todos.isNotEmpty
-          ? ListView(
-              padding: const EdgeInsets.symmetric(vertical: 8.0),
-              children: _todos.map((Todo todo) {
-                return TodoItem(
-                  todo: todo,
-                  onTodoChanged: _handleTodoChange,
-                  onTodoDeleted: _deleteTodoItem,
-                );
-              }).toList(),
-            )
+          ? generateList()
           : const Center(
               child: Text(
               'Nothing To Do',
@@ -132,43 +183,51 @@ class _TodoListState extends State<TodoList> {
         'Hello you see the Tab Dashboard',
         style: optionStyle,
       )),
-      const Center(
-          child: Text(
-        'Hello you see the Tab Settings',
-        style: optionStyle,
-      )),
+      settingsMenu(),
     ];
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Todo List App'),
-        backgroundColor: Colors.purple[600],
+        title: const Text(
+          'Todo List',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: const Color(0xffb388eb),
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        backgroundColor: Colors.purple[600],
-        selectedItemColor: Colors.white,
-        unselectedItemColor: Colors.grey[400],
-        items: const <BottomNavigationBarItem>[
-          BottomNavigationBarItem(
-            icon: Icon(Icons.checklist_rounded),
-            label: 'Todo',
+      bottomNavigationBar: GFTabBar(
+        length: 3,
+        tabBarHeight: 50,
+        controller: tabController,
+        indicatorColor: Colors.white,
+        labelColor: Colors.white,
+        tabBarColor: const Color(0xffb388eb),
+        unselectedLabelColor: Colors.white.withOpacity(.60),
+        tabs: const [
+          Tab(
+            icon: Icon(
+              Icons.checklist_rounded,
+              size: 20,
+            ),
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.dashboard),
-            label: 'Dashboard',
+          Tab(
+            icon: Icon(
+              Icons.dashboard,
+              size: 20,
+            ),
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
-            label: 'Settings',
+          Tab(
+            icon: Icon(
+              Icons.settings,
+              size: 20,
+            ),
           ),
         ],
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
       ),
-      body: pages.elementAt(_selectedIndex),
+      body: GFTabBarView(controller: tabController, children: pages),
       floatingActionButton: AnimatedOpacity(
         duration: const Duration(milliseconds: 150),
-        opacity: _selectedIndex == 0 ? 1 : 0,
+        opacity: _currentIndex == 0 ? 1 : 0,
         child: FloatingActionButton(
+            backgroundColor: Color(0xff8093f1),
             onPressed: () => _displayDialog(),
             tooltip: 'Add Item',
             child: const Icon(Icons.add)),
@@ -176,9 +235,9 @@ class _TodoListState extends State<TodoList> {
     );
   }
 
-  void _onItemTapped(int index) {
+  void _handleTabSelection() {
     setState(() {
-      _selectedIndex = index;
+      _currentIndex = tabController.index;
     });
   }
 
@@ -208,6 +267,13 @@ class _TodoListState extends State<TodoList> {
       _todos.remove(todo);
     });
     saveData();
+    GFToast.showToast(
+      'Task deleted!  ',
+      context,
+      toastPosition: GFToastPosition.BOTTOM,
+      textStyle: const TextStyle(fontSize: 16, color: GFColors.DARK),
+      backgroundColor: GFColors.LIGHT,
+    );
   }
 
   void _addTodoItem(String name) {
@@ -234,7 +300,9 @@ class _TodoListState extends State<TodoList> {
               child: const Text('Add'),
               onPressed: () {
                 Navigator.of(context).pop();
-                _addTodoItem(_textFieldController.text);
+                if (_textFieldController.text != "") {
+                  _addTodoItem(_textFieldController.text);
+                }
               },
             ),
           ],
@@ -249,9 +317,10 @@ class TodoApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
+    return MaterialApp(
       title: 'Todo list',
-      home: TodoList(),
+      theme: ThemeData(textTheme: GoogleFonts.josefinSansTextTheme()),
+      home: const TodoList(),
     );
   }
 }
