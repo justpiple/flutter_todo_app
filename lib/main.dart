@@ -7,7 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:settings_ui/settings_ui.dart';
 import 'package:getwidget/getwidget.dart';
-import 'package:google_fonts/google_fonts.dart';
+// import 'package:google_fonts/google_fonts.dart';
 
 class Todo {
   Todo({required this.name, required this.checked});
@@ -317,10 +317,10 @@ class TodoApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return const MaterialApp(
       title: 'Todo list',
-      theme: ThemeData(textTheme: GoogleFonts.josefinSansTextTheme()),
-      home: const TodoList(),
+      // theme: ThemeData(textTheme: GoogleFonts.josefinSansTextTheme()),
+      home: TodoList(),
     );
   }
 }
